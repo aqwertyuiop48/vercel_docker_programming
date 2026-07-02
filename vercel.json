@@ -1,16 +1,15 @@
 {
   "version": 2,
-  "services": {
-    "micronaut-java-vercel": {
-      "root": "./",
-      "entrypoint": "Dockerfile.vercel",
-      "runtime": "container"
-    }
-  },
-  "rewrites": [
+  "builds": [
     {
-      "source": "/(.*)",
-      "destination": { "service": "micronaut-java-vercel" }
+      "src": "Dockerfile.vercel",
+      "use": "@vercel/container"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/(.*)",
+      "dest": "/"
     }
   ]
 }
