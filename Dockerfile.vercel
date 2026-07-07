@@ -1,11 +1,14 @@
-FROM sreedockerhub19/micronaut-java:latest
+# Pull your pre-built Ktor application image from Docker Hub
+FROM sreedockerhub19/my-ktor-app:latest
 
+# Set Vercel's dynamic runtime port environment variable
 ENV PORT=80
 EXPOSE $PORT
 
-# Force the PATH just in case it was stripped
+# Reinforce the Java environments so they aren't stripped during the pipeline build
 ENV JAVA_HOME=/opt/java/openjdk
 ENV PATH="${JAVA_HOME}/bin:${PATH}"
 
-# Use the absolute path to the Java binary (/opt/java/openjdk/bin/java)
-ENTRYPOINT ["sh", "-c", "/opt/java/openjdk/bin/java -Dserver.port=$PORT -Dmicronaut.server.port=$PORT -jar app.jar"]
+# Override the original entrypoint using a shell execution setup.
+# This forces Ktor to bind to Vercel's dynamic $PORT engine allocations.
+ENTRYPOINT ["/bin/sh", "-c", "java -Dktor.deployment.port=$PORT -Dserver.port=$PORT -jar app.jar"]
