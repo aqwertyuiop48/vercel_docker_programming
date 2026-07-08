@@ -1,11 +1,17 @@
-FROM sreedockerhub19/micronaut-java:latest
+# Pull your pre-built Ktor application image from Docker Hub
+FROM sreedockerhub19/my-ktor-app:latest
 
+# Set Vercel's dynamic runtime port environment variable
 ENV PORT=80
 EXPOSE $PORT
 
-# Force the PATH just in case it was stripped
+# Force clear binary paths 
 ENV JAVA_HOME=/opt/java/openjdk
 ENV PATH="${JAVA_HOME}/bin:${PATH}"
 
-# Use the absolute path to the Java binary (/opt/java/openjdk/bin/java)
-ENTRYPOINT ["sh", "-c", "/opt/java/openjdk/bin/java -Dserver.port=$PORT -Dmicronaut.server.port=$PORT -jar app.jar"]
+# Force the container to use the explicit working directory
+WORKDIR /app
+
+# Absolute system paths for execution to prevent runtime path shifts.
+# We explicitly bind to host 0.0.0.0 so Vercel's proxy router can reach the container.
+ENTRYPOINT ["/bin/sh", "-c", "/opt/java/openjdk/bin/java -Dktor.deployment.port=$PORT -Dktor.deployment.host=0.0.0.0 -jar /app/app.jar"]

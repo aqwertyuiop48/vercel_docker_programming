@@ -1,15 +1,16 @@
 {
   "version": 2,
-  "builds": [
-    {
-      "src": "Dockerfile.vercel",
-      "use": "@vercel/container"
+  "services": {
+    "my-ktor-app": {
+      "root": "./",
+      "entrypoint": "Dockerfile.vercel",
+      "runtime": "container"
     }
-  ],
-  "routes": [
+  },
+  "rewrites": [
     {
-      "src": "/(.*)",
-      "dest": "/"
+      "source": "/(.*)",
+      "destination": { "service": "my-ktor-app" }
     }
   ]
 }
