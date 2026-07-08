@@ -1,11 +1,31 @@
-FROM sreedockerhub19/micronaut-java:latest
+# ---------- Build Stage ----------
+FROM maven:3.9-eclipse-temurin-17 AS build
+WORKDIR /app
+COPY . .
+RUN mvn clean package -DskipTests
 
+# ---------- Run Stage ----------
+FROM eclipse-temurin:17-jre-alpine
+
+# Use Alpine's package manager (apk) to install our routing hack tools
+RUN apk add --no-cache socat netcat-openbsd
+
+WORKDIR /app
+# Copy the compiled Quarkus app from the build stage
+COPY --from=build /app/target/quarkus-app/ ./
+
+# Set up Vercel's required edge port
 ENV PORT=80
 EXPOSE $PORT
 
-# Force the PATH just in case it was stripped
+# Mirroring the absolute Java path for Temurin images
 ENV JAVA_HOME=/opt/java/openjdk
 ENV PATH="${JAVA_HOME}/bin:${PATH}"
 
-# Use the absolute path to the Java binary (/opt/java/openjdk/bin/java)
-ENTRYPOINT ["sh", "-c", "/opt/java/openjdk/bin/java -Dserver.port=$PORT -Dmicronaut.server.port=$PORT -jar app.jar"]
+# THE PRO HACK (Quarkus / Alpine Edition):
+# 1. Start Quarkus in the background (&).
+# 2. Block the script with a while loop that pings 8080 every 0.2 seconds.
+# 3. The exact millisecond Quarkus opens 8080, break the loop and snap socat to Port 80.
+ENTRYPOINT ["sh", "-c", "/opt/java/openjdk/bin/java -jar quarkus-run.jar & \
+    while ! nc -z 127.0.0.1 8080; do sleep 0.2; done; \
+    exec socat TCP-LISTEN:$PORT,fork,reuseaddr TCP:127.0.0.1:8080"]
