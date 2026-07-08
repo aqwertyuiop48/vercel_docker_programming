@@ -3,10 +3,7 @@
   "builds": [
     {
       "src": "Dockerfile.vercel",
-      "use": "@vercel/container",
-      "config": {
-        "ports": [8080]
-      }
+      "use": "@vercel/container"
     }
   ],
   "routes": [

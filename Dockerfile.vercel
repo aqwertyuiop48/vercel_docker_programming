@@ -1,4 +1,21 @@
 FROM sreedockerhub19/my-ktor-app:latest
 
-# Tell Vercel's network to route traffic to Ktor's native port
-EXPOSE 8080
+USER root
+
+# Install socat (for the proxy) and netcat (for the port scanner)
+RUN apt-get update && apt-get install -y socat netcat-openbsd && rm -rf /var/lib/apt/lists/*
+
+ENV PORT=80
+EXPOSE $PORT
+
+ENV JAVA_HOME=/opt/java/openjdk
+ENV PATH="${JAVA_HOME}/bin:${PATH}"
+WORKDIR /app
+
+# THE PRO HACK:
+# 1. Start Java in the background (&) with JVM fast-boot flags
+# 2. Block the script with a while loop that pings 8080 every 0.2 seconds
+# 3. Once Ktor opens 8080, break the loop and execute socat on Port 80
+ENTRYPOINT ["sh", "-c", "/opt/java/openjdk/bin/java -XX:+TieredCompilation -XX:TieredStopAtLevel=1 -jar app.jar & \
+    while ! nc -z 127.0.0.1 8080; do sleep 0.2; done; \
+    exec socat TCP-LISTEN:$PORT,fork,reuseaddr TCP:127.0.0.1:8080"]
