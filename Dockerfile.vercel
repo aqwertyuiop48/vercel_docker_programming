@@ -1,20 +1,18 @@
 FROM sreedockerhub19/my-ktor-app:latest
 
-# Switch to root to install utilities and bind to privileged port 80
+# Switch to root to install socat and bind ports
 USER root
 
-# Install socat (a ultra-lightweight socket relay tool)
+# Install socat safely
 RUN apt-get update && apt-get install -y socat && rm -rf /var/lib/apt/lists/*
 
 ENV PORT=80
 EXPOSE $PORT
 
-# Force the PATH variables identical to your working setup
+# Mirror your exact working environment variables
 ENV JAVA_HOME=/opt/java/openjdk
 ENV PATH="${JAVA_HOME}/bin:${PATH}"
 WORKDIR /app
 
-# THE WORKAROUND:
-# 1. Start socat in the background to port-forward from Vercel's $PORT (80) to Ktor's local port (8080)
-# 2. Start your Java app exactly the way it runs locally without touching a single line of code
-ENTRYPOINT ["sh", "-c", "socat TCP-LISTEN:$PORT,fork TCP:127.0.0.1:8080 & java -jar app.jar"]
+# THE FIX: Use the absolute path to the java binary, just like the Micronaut config
+ENTRYPOINT ["sh", "-c", "socat TCP-LISTEN:$PORT,fork TCP:127.0.0.1:8080 & /opt/java/openjdk/bin/java -jar app.jar"]
