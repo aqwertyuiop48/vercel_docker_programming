@@ -2,23 +2,17 @@ FROM sreedockerhub19/my-spring-boot-maven-app:latest
 
 # Switch to root to install our network routing tools
 USER root
-
-# Install socat (for the proxy) and netcat (for the port scanner)
 RUN apt-get update && apt-get install -y socat netcat-openbsd && rm -rf /var/lib/apt/lists/*
 
-# Set up Vercel's required edge port
 ENV PORT=80
 EXPOSE $PORT
 
-# Mirror the Java paths from your base image
 ENV JAVA_HOME=/opt/java/openjdk
 ENV PATH="${JAVA_HOME}/bin:${PATH}"
 WORKDIR /app
 
-# THE PRO HACK (Spring Boot Edition):
-# 1. Start Spring Boot in the background (&) with fast-boot JVM flags (-noverify speeds up Spring immensely).
-# 2. Block the script with a while loop that pings 8080 every 0.2 seconds.
-# 3. The exact millisecond Tomcat/Spring Boot opens 8080, break the loop and snap socat to Port 80.
-ENTRYPOINT ["sh", "-c", "/opt/java/openjdk/bin/java -noverify -XX:+TieredCompilation -XX:TieredStopAtLevel=1 -jar app.jar & \
+# THE FIX: We added "-Dspring.main.lazy-initialization=true"
+# This forces Spring Boot to skip loading Hikari on boot, allowing Tomcat to open 8080 in < 5 seconds.
+ENTRYPOINT ["sh", "-c", "/opt/java/openjdk/bin/java -noverify -XX:+TieredCompilation -XX:TieredStopAtLevel=1 -Dspring.main.lazy-initialization=true -jar app.jar & \
     while ! nc -z 127.0.0.1 8080; do sleep 0.2; done; \
     exec socat TCP-LISTEN:$PORT,fork,reuseaddr TCP:127.0.0.1:8080"]
