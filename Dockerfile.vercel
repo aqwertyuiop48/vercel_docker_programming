@@ -1,4 +1,17 @@
 FROM sreedockerhub19/my-ktor-app:latest
 
-# Tell Vercel's network to route traffic to Ktor's native port
-EXPOSE 8080
+# Force Vercel's standard port
+ENV PORT=80
+EXPOSE $PORT
+
+# Mirror your working Micronaut PATH setup
+ENV JAVA_HOME=/opt/java/openjdk
+ENV PATH="${JAVA_HOME}/bin:${PATH}"
+
+# Ensure we are in the correct directory where the jar lives
+WORKDIR /app
+
+# THE FIX: 
+# 1. Use absolute path (/opt/java/openjdk/bin/java) to prevent "not found"
+# 2. Pass -port=$PORT and -host=0.0.0.0 at the END of the command. Ktor prioritizes these args over internal code.
+ENTRYPOINT ["sh", "-c", "/opt/java/openjdk/bin/java -Dktor.deployment.port=$PORT -jar app.jar -port=$PORT -host=0.0.0.0"]
