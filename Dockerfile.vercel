@@ -1,11 +1,13 @@
-FROM sreedockerhub19/micronaut-java:latest
+# Pull your pre-built Nginx frontend image
+FROM sreedockerhub19/my-angular-app-main:latest
 
+# Set up Vercel's required edge port
 ENV PORT=80
 EXPOSE $PORT
 
-# Force the PATH just in case it was stripped
-ENV JAVA_HOME=/opt/java/openjdk
-ENV PATH="${JAVA_HOME}/bin:${PATH}"
-
-# Use the absolute path to the Java binary (/opt/java/openjdk/bin/java)
-ENTRYPOINT ["sh", "-c", "/opt/java/openjdk/bin/java -Dserver.port=$PORT -Dmicronaut.server.port=$PORT -jar app.jar"]
+# THE NGINX PATH BYPASS:
+# 1. We don't need socat or while-loops because Nginx boots instantly.
+# 2. We use 'sh -c' to properly execute the official Nginx entrypoint.
+# 3. We dynamically swap Vercel's $PORT into your Nginx config right before it boots 
+#    just to guarantee Vercel's edge network perfectly aligns with it.
+ENTRYPOINT ["sh", "-c", "sed -i -e 's/listen.*/listen '$PORT';/g' /etc/nginx/conf.d/*.conf 2>/dev/null || true && /docker-entrypoint.sh nginx -g 'daemon off;'"]
