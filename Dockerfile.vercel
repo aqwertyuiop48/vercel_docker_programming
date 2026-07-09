@@ -1,14 +1,25 @@
-# Pull your pre-built Vert.x application image
+# Pull your pre-built Vert.x Java application image
 FROM sreedockerhub19/my-vertx-app:latest
 
-# Tell Vercel AND Vert.x to use Port 80
+# Switch to root to install our routing tools
+USER root
+RUN apt-get update && apt-get install -y socat netcat-openbsd && rm -rf /var/lib/apt/lists/*
+
+# Set up Vercel's required edge port
 ENV PORT=80
-EXPOSE 80
+EXPOSE $PORT
 
 # Mirror the Java paths to override the Vercel PATH bug
 ENV JAVA_HOME=/opt/java/openjdk
 ENV PATH="${JAVA_HOME}/bin:${PATH}"
+WORKDIR /app
 
-# Run Vert.x natively using the absolute Java path to bypass Layer 15.
-# Vert.x will naturally read ENV PORT=80 and bind beautifully to Vercel's edge network.
-ENTRYPOINT ["/opt/java/openjdk/bin/java", "-jar", "/app/app.jar"]
+# THE STABILIZED RELAY HACK:
+# 1. Start Vert.x in the background (&) on its hardcoded 8080 port.
+# 2. Block Vercel with a while-loop until 8080 genuinely opens.
+# 3. CRITICAL: Add `sleep 1` to give Netty's asynchronous sockets time to stabilize (preventing "Connection refused").
+# 4. Snap socat into place to bridge the traffic.
+ENTRYPOINT ["sh", "-c", "/opt/java/openjdk/bin/java -jar /app/app.jar & \
+    while ! nc -z 127.0.0.1 8080; do sleep 0.2; done; \
+    sleep 1; \
+    exec socat TCP-LISTEN:$PORT,fork,reuseaddr TCP:127.0.0.1:8080"]
