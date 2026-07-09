@@ -1,13 +1,9 @@
-# Pull your pre-built Nginx frontend image
+# Pull your pre-built Angular frontend image
 FROM sreedockerhub19/my-angular-app-main:latest
 
-# Set up Vercel's required edge port
+# Explicitly tell Vercel we are using Port 80
 ENV PORT=80
-EXPOSE $PORT
+EXPOSE 80
 
-# THE NGINX PATH BYPASS:
-# 1. We don't need socat or while-loops because Nginx boots instantly.
-# 2. We use 'sh -c' to properly execute the official Nginx entrypoint.
-# 3. We dynamically swap Vercel's $PORT into your Nginx config right before it boots 
-#    just to guarantee Vercel's edge network perfectly aligns with it.
-ENTRYPOINT ["sh", "-c", "sed -i -e 's/listen.*/listen '$PORT';/g' /etc/nginx/conf.d/*.conf 2>/dev/null || true && /docker-entrypoint.sh nginx -g 'daemon off;'"]
+# Run the standard Nginx entrypoint purely, exactly as it runs on your local machine
+ENTRYPOINT ["/docker-entrypoint.sh", "nginx", "-g", "daemon off;"]
