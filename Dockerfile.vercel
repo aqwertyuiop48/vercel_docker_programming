@@ -1,23 +1,22 @@
 # Pull your pre-built Vert.x application image
 FROM sreedockerhub19/my-vertx-app:latest
 
-# Switch to root to install socat and netcat (crucial for the loop)
+# Switch to root to install our routing tools
 USER root
 RUN apt-get update && apt-get install -y socat netcat-openbsd && rm -rf /var/lib/apt/lists/*
 
-# Set up Vercel's required edge port
 ENV PORT=80
-EXPOSE $PORT
+EXPOSE 80
 
-# Mirror the Java paths to override the Vercel PATH bug
 ENV JAVA_HOME=/opt/java/openjdk
 ENV PATH="${JAVA_HOME}/bin:${PATH}"
 WORKDIR /app
 
-# THE DELAY RELAY HACK:
-# 1. Start Vert.x in the background (&) with fast-boot JVM flags.
-# 2. Block Vercel's port 80 with a while loop, forcing Vercel to wait patiently.
-# 3. The exact millisecond Vert.x opens 8080, snap socat to Port 80 and stream the traffic.
-ENTRYPOINT ["sh", "-c", "/opt/java/openjdk/bin/java -XX:+TieredCompilation -XX:TieredStopAtLevel=1 -jar /app/app.jar & \
-    while ! nc -z 127.0.0.1 8080; do sleep 0.2; done; \
-    exec socat TCP-LISTEN:$PORT,fork,reuseaddr TCP:127.0.0.1:8080"]
+# THE STABILIZED RELAY:
+# 1. Run Java purely. NO aggressive JVM flags. Let Vert.x boot naturally.
+# 2. Use 'localhost' instead of 127.0.0.1 to avoid IPv4/IPv6 mismatches.
+# 3. Add 'sleep 1' after the port opens to let Netty's event loop fully stabilize.
+ENTRYPOINT ["sh", "-c", "/opt/java/openjdk/bin/java -jar /app/app.jar & \
+    while ! nc -z localhost 8080; do sleep 0.2; done; \
+    sleep 1; \
+    exec socat TCP-LISTEN:$PORT,fork,reuseaddr TCP:localhost:8080"]
