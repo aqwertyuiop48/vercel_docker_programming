@@ -1,11 +1,26 @@
-FROM sreedockerhub19/micronaut-java:latest
+# Pull your pre-built Helidon application image
+FROM sreedockerhub19/helidon-demo:latest
 
+# Switch to root to install our routing tools
+USER root
+RUN apt-get update && apt-get install -y socat netcat-openbsd && rm -rf /var/lib/apt/lists/*
+
+# Set up Vercel's required edge port
 ENV PORT=80
 EXPOSE $PORT
 
-# Force the PATH just in case it was stripped
+# Mirror the Java paths to override the Vercel PATH bug
 ENV JAVA_HOME=/opt/java/openjdk
 ENV PATH="${JAVA_HOME}/bin:${PATH}"
+WORKDIR /app
 
-# Use the absolute path to the Java binary (/opt/java/openjdk/bin/java)
-ENTRYPOINT ["sh", "-c", "/opt/java/openjdk/bin/java -Dserver.port=$PORT -Dmicronaut.server.port=$PORT -jar app.jar"]
+# THE STABILIZED RELAY HACK:
+# 1. Start Helidon in the background (&) using the absolute Java path to bypass Layer 16.
+# 2. Add fast-boot JVM flags to ensure the server starts instantly.
+# 3. Block Vercel with a while-loop until 8080 genuinely opens.
+# 4. Add a tiny sleep (0.5s) to let Helidon's sockets fully stabilize before routing traffic.
+# 5. Snap socat into place to bridge Vercel's Port 80 to Helidon's Port 8080.
+ENTRYPOINT ["sh", "-c", "/opt/java/openjdk/bin/java -XX:+TieredCompilation -XX:TieredStopAtLevel=1 -jar app.jar & \
+    while ! nc -z 127.0.0.1 8080; do sleep 0.2; done; \
+    sleep 0.5; \
+    exec socat TCP-LISTEN:$PORT,fork,reuseaddr TCP:127.0.0.1:8080"]
