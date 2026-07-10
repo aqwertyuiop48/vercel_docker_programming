@@ -1,9 +1,9 @@
-# Pull your pre-built Kotlin HTTP server image
+# Pull your pre-built simple-http-server image
 FROM sreedockerhub19/simple-http-server-kotlin:latest
 
-# Switch to root to install our bulletproof proxy
+# Switch to root to install our routing tools
 USER root
-RUN apt-get update && apt-get install -y socat && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y socat netcat-openbsd && rm -rf /var/lib/apt/lists/*
 
 # Set up Vercel's required edge port
 ENV PORT=80
@@ -14,10 +14,13 @@ ENV JAVA_HOME=/opt/java/openjdk
 ENV PATH="${JAVA_HOME}/bin:${PATH}"
 WORKDIR /app
 
-# THE BUFFER HACK:
-# 1. socat instantly binds to Port 80 to disarm Vercel's 15-second executioner.
-# 2. It holds any incoming web requests and retries sending them to 8080 every 1 second.
-# 3. We use the absolute path to Java to bypass the broken certificate script in Layer 15.
-# 4. We execute your specific main class exactly as defined in your base image's CMD.
-ENTRYPOINT ["sh", "-c", "socat TCP-LISTEN:$PORT,fork,reuseaddr TCP:127.0.0.1:8080,retry=30,interval=1 & \
-    exec /opt/java/openjdk/bin/java -XX:+TieredCompilation -XX:TieredStopAtLevel=1 -cp app.jar com.example.SimpleHttpServer"]
+# THE STABILIZED RELAY HACK:
+# 1. Start your custom HTTP server class in the background (&) using the absolute Java path.
+# 2. Add fast-boot JVM flags to ensure it boots as quickly as possible.
+# 3. Block Vercel with a while-loop until 8080 genuinely opens.
+# 4. Add a tiny sleep (0.5s) to let the server's sockets fully stabilize before routing traffic.
+# 5. Snap socat into place to bridge Vercel's Port 80 to the internal Port 8080.
+ENTRYPOINT ["sh", "-c", "/opt/java/openjdk/bin/java -XX:+TieredCompilation -XX:TieredStopAtLevel=1 -cp app.jar com.example.SimpleHttpServer & \
+    while ! nc -z 127.0.0.1 8080; do sleep 0.2; done; \
+    sleep 0.5; \
+    exec socat TCP-LISTEN:$PORT,fork,reuseaddr TCP:127.0.0.1:8080"]
