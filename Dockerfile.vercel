@@ -1,11 +1,18 @@
-FROM sreedockerhub19/micronaut-java:latest
+# Pull your pre-built Ruby application image
+FROM sreedockerhub19/ruby-http-server:latest
 
+# Switch to root to install socat for routing
+USER root
+RUN apt-get update && apt-get install -y socat && rm -rf /var/lib/apt/lists/*
+
+# Set up Vercel's required edge port
 ENV PORT=80
 EXPOSE $PORT
 
-# Force the PATH just in case it was stripped
-ENV JAVA_HOME=/opt/java/openjdk
-ENV PATH="${JAVA_HOME}/bin:${PATH}"
+WORKDIR /app
 
-# Use the absolute path to the Java binary (/opt/java/openjdk/bin/java)
-ENTRYPOINT ["sh", "-c", "/opt/java/openjdk/bin/java -Dserver.port=$PORT -Dmicronaut.server.port=$PORT -jar app.jar"]
+# THE RUBY RELAY:
+# 1. Start your Ruby script in the background (&) exactly as defined in Layer 19 (server_.rb).
+# 2. Wait a split second (sleep 0.2) since Ruby boots up almost instantly.
+# 3. Exec socat to cleanly route incoming traffic from Vercel's $PORT (80) straight to internal port 10000.
+ENTRYPOINT ["sh", "-c", "ruby server_.rb & sleep 0.2 && exec socat TCP-LISTEN:$PORT,fork,reuseaddr TCP:127.0.0.1:10000"]
