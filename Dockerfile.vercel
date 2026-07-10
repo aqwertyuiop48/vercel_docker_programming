@@ -1,4 +1,4 @@
-FROM sreedockerhub19/micronaut-java:latest
+FROM sreedockerhub19/micronaut-kotlin:latest
 
 ENV PORT=80
 EXPOSE $PORT
