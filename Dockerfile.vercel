@@ -9,10 +9,14 @@ RUN apt-get update && apt-get install -y socat && rm -rf /var/lib/apt/lists/*
 ENV PORT=80
 EXPOSE $PORT
 
+# CRITICAL FIX: Align with the base image's working directory first
 WORKDIR /app
 
+# THE 404 BYPASS: Create the dummy static target safely inside the active /app directory
+RUN mkdir -p public && echo "OK" > public/index.html
+
 # THE RUBY RELAY:
-# 1. Start your Ruby script in the background (&) exactly as defined in Layer 19 (server_.rb).
-# 2. Wait a split second (sleep 0.2) since Ruby boots up almost instantly.
+# 1. Start your Ruby script in the background (&) explicitly using its path or inside /app.
+# 2. Wait a split second (sleep 0.5) to let Ruby bind to 10000.
 # 3. Exec socat to cleanly route incoming traffic from Vercel's $PORT (80) straight to internal port 10000.
-ENTRYPOINT ["sh", "-c", "ruby server_.rb & sleep 0.2 && exec socat TCP-LISTEN:$PORT,fork,reuseaddr TCP:127.0.0.1:10000"]
+ENTRYPOINT ["sh", "-c", "ruby ./server_.rb & sleep 0.5 && exec socat TCP-LISTEN:$PORT,fork,reuseaddr TCP:127.0.0.1:10000"]
