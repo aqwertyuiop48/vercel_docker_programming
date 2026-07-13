@@ -1,7 +1,7 @@
 name: Trigger Branch Pushes
 
 on:
-  workflow_dispatch: # Allows you to manually click "Run workflow" from the Actions tab
+  workflow_dispatch:
 
 jobs:
   push-to-branches:
@@ -10,7 +10,7 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0 # Fetches all branches instead of just the default one
+          fetch-depth: 0 
           token: ${{ secrets.TRIGGER_PAT_AQWERTYUIOP48 }}
 
       - name: Configure Git User
@@ -18,7 +18,7 @@ jobs:
           git config --global user.name "aqwertyuiop48"
           git config --global user.email "aqwertyuiop48@hotmail.com"
 
-      - name: Loop and Push Empty Commits to Branches
+      - name: Loop and Push Commits to Branches
         run: |
           BRANCHES=(
             "my-nextjs-app"
@@ -48,12 +48,17 @@ jobs:
             echo "Switching to branch: $branch"
             echo "------------------------------------------------"
             
-            # Checkout the remote branch locally. If it fails, skip to next.
-            git checkout "$branch" || { echo "Branch $branch not found, skipping..."; continue; }
+            # Checkout the remote branch
+            git checkout -b "$branch" "origin/$branch" || git checkout "$branch" || { echo "Branch $branch not found, skipping..."; continue; }
             
-            # Create a zero-change empty commit to simulate a code update
-            git commit --allow-empty -m "chore: automated empty commit to trigger deployment pipelines"
+            # FORCE VERCEL BY CHANGING A FILE
+            date +%s > vercel-deploy-trigger.txt
+            git add vercel-deploy-trigger.txt
+            git commit -m "chore: force Vercel deployment update"
             
-            # Push the commit back up to the specific branch on origin
+            # Push the commit
             git push origin "$branch"
+            
+            # Pause for 3 seconds to prevent Vercel rate-limiting
+            sleep 3
           done
