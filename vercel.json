@@ -6,7 +6,6 @@
       "*": false
     }
   },
-    "ignoreBuildCommand": "[ \"$VERCEL_GIT_COMMIT_REF\" != \"micronaut-kotlin\" ]",
   "builds": [
     {
       "src": "Dockerfile.vercel",
