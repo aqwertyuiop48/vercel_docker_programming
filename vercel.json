@@ -1,11 +1,5 @@
 {
   "version": 2,
-      "git": {
-    "deploymentEnabled": {
-      "micronaut_java": true,
-      "*": false
-    }
-  },
   "builds": [
     {
       "src": "Dockerfile.vercel",
