@@ -15,8 +15,8 @@ jobs:
 
       - name: Configure Git User
         run: |
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git config --global user.name "aqwertyuiop48"
+          git config --global user.email "aqwertyuiop48@hotmail.com"
 
       - name: Loop and Push Empty Commits to Branches
         run: |
