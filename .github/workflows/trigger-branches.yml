@@ -1,0 +1,59 @@
+name: Trigger Branch Pushes
+
+on:
+  workflow_dispatch: # Allows you to manually click "Run workflow" from the Actions tab
+
+jobs:
+  push-to-branches:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Fetches all branches instead of just the default one
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Configure Git User
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Loop and Push Empty Commits to Branches
+        run: |
+          BRANCHES=(
+            "my-nextjs-app"
+            "simple-http-server-kotlin"
+            "simple-http-server"
+            "ruby-http-server"
+            "micronaut-kotlin"
+            "helidon-demo-kotlin"
+            "helidon-demo"
+            "javalin-java-app"
+            "my-javalin-app"
+            "my-quarkus-kotlin-app"
+            "my-vertx-app"
+            "my-angular-app"
+            "my-spring-app"
+            "my-angular-app-main"
+            "my-vertx-app-kotlin"
+            "micronaut_java"
+            "my-spring-boot-maven-app"
+            "my-quarkus-java-app"
+            "my-spring-boot-app"
+            "my-ktor-app"
+          )
+
+          for branch in "${BRANCHES[@]}"; do
+            echo "------------------------------------------------"
+            echo "Switching to branch: $branch"
+            echo "------------------------------------------------"
+            
+            # Checkout the remote branch locally. If it fails, skip to next.
+            git checkout "$branch" || { echo "Branch $branch not found, skipping..."; continue; }
+            
+            # Create a zero-change empty commit to simulate a code update
+            git commit --allow-empty -m "chore: automated empty commit to trigger deployment pipelines"
+            
+            # Push the commit back up to the specific branch on origin
+            git push origin "$branch"
+          done
